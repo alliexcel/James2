@@ -150,6 +150,7 @@ namespace James.Controllers
 
         public LuisClass.Response Stadan(LuisClass.RootObject lc)
         {
+
             LuisClass.Response ResponseClass = new LuisClass.Response();
             try
             {

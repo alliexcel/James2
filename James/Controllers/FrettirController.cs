@@ -11,11 +11,13 @@ using HtmlAgilityPack;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Xml;
+using Newtonsoft.Json;
 
 namespace James.Controllers
 {
     public class FrettirController : Controller
     {
+        private ApplicationDbContext db = new ApplicationDbContext();
         public LuisCalls.LuisClass.Response FrettirTextResult(LuisCalls.LuisClass.RootObject lc, string SetTopic)
         {
 
@@ -26,6 +28,128 @@ namespace James.Controllers
 
             return ResponseClass;
         }
+
+
+        private LuisClass.Response Fyrirsagnir(LuisClass.RootObject lc, string SetTopic)
+        {
+            string responsestring = "";
+            LuisClass.Response ResponseClass = new LuisClass.Response();
+
+            Extract ex = new Extract();
+            ex = Extractfjoldi(lc);
+            ex.topic = "Fréttir " + ex.midill;
+
+            ex = ReturnURL(lc, ex);
+            string Url = ex.URL;
+            int fjoldi = ex.fjoldi;
+            string midill = ex.midill;
+            string tegund = ex.tegund;
+
+            HtmlWeb web = new HtmlWeb();
+            web.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36";
+            
+
+
+
+            string myString = "";
+
+            //HVernig MBL er skrapaður
+            if (midill == null) { responsestring = "Geturðu endurtekið spurninguna?"; }
+
+            if (midill == "mbl")
+            {
+                System.Xml.XmlDocument rssXmlDoc = new XmlDocument();
+
+                // Load the RSS file from the RSS URL
+                rssXmlDoc.Load(Url);
+                responsestring = "";
+                // Parse the Items in the RSS file9
+                XmlNodeList rssNodes = rssXmlDoc.SelectNodes("//item//title");
+                string tala = "";
+                for (int x = 1; x <= ex.fjoldi; x++)
+                {
+                    tala = Tolutexti(x);
+                    XmlNode item = rssNodes[x];
+                    responsestring = responsestring + "Frétt númer " + tala + ". " + item.FirstChild.InnerText + ". ";
+
+                }
+
+            }
+
+            if (midill == "dv")
+            {
+                HtmlDocument document = web.Load(Url);
+                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"alphadelta\"]//article//h2").ToArray();
+                //Strengur hnýttur saman7
+                responsestring = "";
+                string tala = "";
+                for (int x = 0; x < fjoldi; x++)
+                {
+                    tala = Tolutexti(x + 1);
+                    myString = System.Net.WebUtility.HtmlDecode(Yfirsagnir[x].InnerText);
+                    responsestring = "D V býður ekki upp á r s s streymi og því er ekki hægt að lesa fréttir.";
+                    // responsestring = responsestring + "Frétt númer " + tala + ". " + Regex.Replace(myString, @"\t|\n|\r", "") + ". ";
+                }
+            }
+
+            if (midill == "vísir")
+            {
+                System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
+                System.Net.ServicePointManager.Expect100Continue = false;
+           
+
+                HtmlDocument document = web.Load(Url);
+                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class= \"row ui-mb-xs-30\"]//div[@class= \"article-item__content\"]").ToArray();
+                
+                foreach(var item in Yfirsagnir)
+                {
+                   
+                   // item.InnerText
+                  
+                }
+
+
+
+
+                //Strengur hnýttur saman7
+                responsestring = "";
+                string tala = "";
+                for (int x = 0; x < fjoldi; x++)
+                {
+                    tala = Tolutexti(x + 1);
+                    myString = System.Net.WebUtility.HtmlDecode(Yfirsagnir[x].InnerText);
+                    responsestring = "D V býður ekki upp á r s s streymi og því er ekki hægt að lesa fréttir.";
+                    // responsestring = responsestring + "Frétt númer " + tala + ". " + Regex.Replace(myString, @"\t|\n|\r", "") + ". ";
+                }
+
+            }
+
+            if (midill == "rúv")
+            {
+                System.Xml.XmlDocument rssXmlDoc = new XmlDocument();
+
+                // Load the RSS file from the RSS URL
+                rssXmlDoc.Load(Url);
+                responsestring = "";
+                // Parse the Items in the RSS file9
+                XmlNodeList rssNodes = rssXmlDoc.GetElementsByTagName("//item//title");
+                string tala = "";
+                for (int x = 1; x <= ex.fjoldi; x++)
+                {
+                    tala = Tolutexti(x);
+                    XmlNode item = rssNodes[x];
+                    responsestring = responsestring + "Frétt númer " + tala + ". " + item.FirstChild.InnerText + ". ";
+
+                }
+            }
+
+            ResponseClass.TextResponse = responsestring;
+            ResponseClass.SetTopic = "Fréttir " + midill + " " + tegund;
+            return ResponseClass;
+
+        }
+
+
 
         private LuisClass.Response Lesa(LuisClass.RootObject lc, string SetTopic)
         {
@@ -51,20 +175,26 @@ namespace James.Controllers
                 Extract ex2 = new Extract();
                 ex2 = Extractfjoldi(lc);
                 ex.fjoldi = ex2.fjoldi - 1;
-                string myString = "";
-            
+          
             if (SetTopic.Contains("vísir") == true)
             {
-                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"main-content\"]//h1[@class=\"article-item__title\"]//a[@href]").ToArray();                                          
-                    myString = "http://www.visir.is" + System.Net.WebUtility.HtmlDecode(Yfirsagnir[ex.fjoldi].Attributes["href"].Value);
-                document = web.Load(myString);
-                HtmlAgilityPack.HtmlNode[] Frasogn = document.DocumentNode.SelectNodes("//div[@class=\"article-single__content\"]//p").ToArray();
-                responsestring = Frasogn[0].InnerText.Trim();
-                responsestring = responsestring.Replace(".",". ");
-                responsestring = responsestring.Replace(":", ": ");
-                responsestring = responsestring.Replace(".  ", ". ");
-                //responsestring = Regex.Replace(myString, @"\t|\n|\r", "").Trim();
-            }
+
+                System.Xml.XmlDocument rssXmlDoc = new XmlDocument();
+
+                ex2 = ReturnURL(lc, ex);
+                string Url = ex2.URL;
+                // Load the RSS file from the RSS URL
+                rssXmlDoc.Load(Url);
+                responsestring = "";
+                // Parse the Items in the RSS file9
+                XmlNodeList rssNodes = rssXmlDoc.SelectNodes("//item//description");
+
+                responsestring = rssNodes[ex2.fjoldi - 1].FirstChild.Value;
+
+
+                responsestring = Regex.Replace(responsestring, @"<[^>]*>", String.Empty, RegexOptions.IgnoreCase).Trim();
+
+        }
 
             if(SetTopic.Contains("rúv")== true)
             {
@@ -76,7 +206,7 @@ namespace James.Controllers
                 rssXmlDoc.Load(Url);
                 responsestring = "";
                 // Parse the Items in the RSS file9
-                XmlNodeList rssNodes = rssXmlDoc.GetElementsByTagName("description");              
+                XmlNodeList rssNodes = rssXmlDoc.GetElementsByTagName("//item//description");              
                 responsestring = rssNodes[ex2.fjoldi -1].FirstChild.Value;
 
             }
@@ -89,20 +219,21 @@ namespace James.Controllers
 
             if (SetTopic.Contains("mbl") == true)
             {
-                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"teaser\"]/div[@class=\"texti\"]//span/a[@href]").ToArray();
 
-                myString = "http://www.mbl.is" + System.Net.WebUtility.HtmlDecode(Yfirsagnir[ex.fjoldi].Attributes["href"].Value);
-                document = web.Load(myString);
-                HtmlAgilityPack.HtmlNode[] Frasogn = document.DocumentNode.SelectNodes("//div[@class=\"main-layout\"]//p").ToArray();
+                System.Xml.XmlDocument rssXmlDoc = new XmlDocument();
 
+                ex2 = ReturnURL(lc, ex);
+                string Url = ex2.URL;
+                // Load the RSS file from the RSS URL
+                rssXmlDoc.Load(Url);
                 responsestring = "";
-                foreach (var item in Frasogn)
-                {
-                    responsestring = responsestring + " " + System.Net.WebUtility.HtmlDecode(item.InnerText.Trim());
-                }
+                // Parse the Items in the RSS file9
+                XmlNodeList rssNodes = rssXmlDoc.SelectNodes("//item//description");
 
-                responsestring = responsestring.Replace("-", "");
+                responsestring = rssNodes[ex2.fjoldi - 1].FirstChild.Value;
 
+   
+                responsestring = Regex.Replace(responsestring, @"<[^>]*>", String.Empty, RegexOptions.IgnoreCase).Trim();
 
             }
             r.SetTopic = SetTopic;
@@ -113,20 +244,20 @@ namespace James.Controllers
         private Extract ReturnURL(LuisClass.RootObject lc, Extract ex)
         {
 
-            if (ex.midill == "mbl" && ex.tegund == "íþróttir") { ex.URL = "https://www.mbl.is/sport/"; }
-            if (ex.midill == "mbl" && ex.tegund == "viðskipti") { ex.URL = "https://www.mbl.is/vidskipti/"; }
-            if (ex.midill == "mbl" && ex.tegund == "slúður") { ex.URL = "https://www.mbl.is/folk/"; }
-            if (ex.midill == "mbl" && (ex.tegund == "" || ex.tegund == null )) { ex.URL = "https://www.mbl.is/frettir/"; }
+            if (ex.midill == "mbl" && ex.tegund == "íþróttir") { ex.URL = "https://www.mbl.is/feeds/sport/"; }
+            if (ex.midill == "mbl" && ex.tegund == "viðskipti") { ex.URL = "https://www.mbl.is/feeds/vidskipti/"; }
+            if (ex.midill == "mbl" && ex.tegund == "slúður") { ex.URL = "https://www.mbl.is/feeds/smartland/"; }
+            if (ex.midill == "mbl" && (ex.tegund == "" || ex.tegund == null )) { ex.URL = "https://www.mbl.is/feeds/fp/"; }
 
             if (ex.midill == "dv" && (ex.tegund == "" || ex.tegund == null)) { ex.URL = "http://www.dv.is/frettir/"; }
             if (ex.midill == "dv" && ex.tegund == "íþróttir") { ex.URL = "http://www.dv.is/frettir/"; }
             if (ex.midill == "dv" && ex.tegund == "viðskipti") { ex.URL = "http://www.dv.is/frettir/"; }
             if (ex.midill == "dv" && ex.tegund == "slúður") { ex.URL = "http://www.dv.is/frettir/"; }
 
-            if (ex.midill == "vísir" && ex.tegund == "" || ex.midill == "vísir" && (ex.tegund == null)) { ex.URL = "http://www.visir.is/f/frettir"; }
-            if (ex.midill == "vísir" && ex.tegund == "íþróttir") { ex.URL = "http://www.visir.is/f/sport"; }
-            if (ex.midill == "vísir" && ex.tegund == "slúður") { ex.URL = "http://www.visir.is/f/lifid"; }
-            if (ex.midill == "vísir" && ex.tegund == "viðskipti") { ex.URL = "http://www.visir.is/f/vidskipti"; }
+            if (ex.midill == "vísir" && ex.tegund == "" || ex.midill == "vísir" && (ex.tegund == null)) { ex.URL = "http://www.visir.is/rss/allt"; }
+            if (ex.midill == "vísir" && ex.tegund == "íþróttir") { ex.URL = "https://www.visir.is/f/sport"; }
+            if (ex.midill == "vísir" && ex.tegund == "slúður") { ex.URL = "https://www.visir.is/rss/lifid"; }
+            if (ex.midill == "vísir" && ex.tegund == "viðskipti") { ex.URL = "https://www.visir.is/rss/vidskipti"; }
 
             if (ex.midill == "rúv" && (ex.tegund == null || ex.tegund == "")) { ex.URL = "http://www.ruv.is/rss/frettir"; }
             if (ex.midill == "rúv" && ex.tegund == "íþróttir") { ex.URL = "http://www.ruv.is/rss/ithrottir"; }
@@ -135,96 +266,7 @@ namespace James.Controllers
            
         }
 
-        private LuisClass.Response Fyrirsagnir(LuisClass.RootObject lc, string SetTopic)
-        {
-            string responsestring = "";
-            LuisClass.Response ResponseClass = new LuisClass.Response();
-          
-            Extract ex = new Extract();
-            ex = Extractfjoldi(lc);
-            ex.topic = "Fréttir " + ex.midill;
 
-            ex = ReturnURL(lc, ex);
-            string Url = ex.URL;
-            int fjoldi = ex.fjoldi;
-            string midill = ex.midill;
-            string tegund = ex.tegund;
-
-            HtmlWeb web = new HtmlWeb();
-            
-            string myString = "";
-           
-            //HVernig MBL er skrapaður
-            if (midill == null) { responsestring = "Geturðu endurtekið spurninguna?"; }
-            if (midill == "mbl")
-            {
-                HtmlDocument document = web.Load(Url);
-                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"teaser\"]/h1").ToArray();
-                responsestring = "";
-                string tala = "";
-                for (int x = 0; x < fjoldi; x++)
-                {
-                    tala = Tolutexti(x + 1);
-                    myString = System.Net.WebUtility.HtmlDecode(Yfirsagnir[x].InnerText);
-                    responsestring = responsestring + "Frétt númer " + tala + ". " +  Regex.Replace(myString, @"\t|\n|\r", "") + ". ";
-                }            
-            }
-                       
-            if (midill == "dv")
-            {
-                HtmlDocument document = web.Load(Url);
-                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"alphadelta\"]//article//h2").ToArray();
-                //Strengur hnýttur saman7
-                responsestring = "";
-                string tala = "";
-                for (int x = 0; x < fjoldi; x++)
-                {
-                    tala = Tolutexti(x + 1);
-                    myString = System.Net.WebUtility.HtmlDecode(Yfirsagnir[x].InnerText);
-                    responsestring = responsestring + "Frétt númer " + tala + ". " + Regex.Replace(myString, @"\t|\n|\r", "") + ". ";
-                }
-            }
-
-            if (midill == "vísir")
-            {
-                HtmlDocument document = web.Load(Url);
-                HtmlAgilityPack.HtmlNode[] Yfirsagnir = document.DocumentNode.SelectNodes("//div[@class=\"main-content\"]//h1[@class=\"article-item__title\"]").ToArray();
-                //Strengur hnýttur saman7
-                responsestring = "";
-                string tala = "";
-                for (int x = 0; x < fjoldi; x++)
-                {
-                    tala = Tolutexti(x + 1);
-                    myString = System.Net.WebUtility.HtmlDecode(Yfirsagnir[x].InnerText);                 
-                    responsestring = responsestring + "Frétt númer " + tala + ". " + myString + ". ";
-                }
-
-            }
-
-            if(midill =="rúv")
-            {
-                System.Xml.XmlDocument rssXmlDoc = new XmlDocument();
-
-                // Load the RSS file from the RSS URL
-                rssXmlDoc.Load(Url);
-                responsestring = "";
-                // Parse the Items in the RSS file9
-                XmlNodeList rssNodes = rssXmlDoc.GetElementsByTagName("title");
-                string tala = "";
-                for (int x = 1; x <= ex.fjoldi; x++ )
-                {
-                    tala = Tolutexti(x);
-                    XmlNode item = rssNodes[x];
-                    responsestring = responsestring + "Frétt númer " + tala + ". " + item.FirstChild.InnerText + ". ";
-                  
-                }
-            }
-
-            ResponseClass.TextResponse = responsestring;
-            ResponseClass.SetTopic = "Fréttir " + midill + " " + tegund;
-            return ResponseClass;
-
-        }
 
         private Extract Extractfjoldi(LuisClass.RootObject lc)
         {

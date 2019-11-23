@@ -46,10 +46,14 @@ namespace James.Controllers
             string url = "";
             string SetTopic = "";
             SetTopic = SetIntent;
-            
-                    
+
+            //http://localhost:7013/Saids/GetData?GoogleText="Lestu þrjár fréttir á mbl"&SetIntent=""
+
             GoogleText = Regex.Replace(GoogleText, "\"", "");
             SetTopic = Regex.Replace(SetTopic, "\"", "");
+
+
+            //virðist ekki vera að notfæra mér topicið. Allt í einni gervigreind. 
 
             url = "https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/c08df70d-b17c-4619-be57-784dc9f83aac?subscription-key=ac9e91b3940344369648a914cdaa05ce&timezoneOffset=-360&q=" + GoogleText;
 
@@ -132,11 +136,10 @@ namespace James.Controllers
             s.GoogleSpeechText = lc.query;
             s.AnswerIntent = lc.topScoringIntent.intent;
 
-            if (lc.topScoringIntent.intent == "None")
-            {              
+            
                 db.Saids.Add(s);
                 db.SaveChanges();
-            }
+
 
 
           if (lc.topScoringIntent.intent == "Gengi" || lc.topScoringIntent.intent == "Stadan")
@@ -144,22 +147,21 @@ namespace James.Controllers
                 Bankinn bankinn = new Bankinn();
                 ResponseClass = bankinn.BankiTextResult(lc);
                 ResponseClass.SetTopic = "Banki";
-           }
-            if (lc.topScoringIntent.intent == "None")
-            {
+          }
+          if (lc.topScoringIntent.intent == "Fyrirsagnir" || lc.topScoringIntent.intent == "Lesa")
+          {
+                FrettirController frettir = new FrettirController();              
+                ResponseClass = frettir.FrettirTextResult(lc, SetTopic);
+                
+
+            }
+          if (lc.topScoringIntent.intent == "None")
+          {
                 ResponseClass.SetTopic = SetTopic;
                 ResponseClass.TextResponse = "Geturðu tala skýrar eða endurorðað spurninguna.";
-                
-            }
 
-          if (lc.topScoringIntent.intent == "Fyrirsagnir" || lc.topScoringIntent.intent == "Lesa")
-           {
-                FrettirController frettir = new FrettirController();
-                ResponseClass = frettir.FrettirTextResult(lc, SetTopic);
-               
-            }
+          }
 
- 
             return ResponseClass;
         }
 

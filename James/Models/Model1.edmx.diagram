@@ -5,7 +5,17 @@
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
       <Diagram DiagramId="77f35142e32d4a2b96d1abd4309380cc" Name="Diagram1">
-        <EntityTypeShape EntityType="JamesDbModel.Said" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="JamesDbModel.C__MigrationHistory" Width="1.5" PointX="0.75" PointY="3.75" />
+        <EntityTypeShape EntityType="JamesDbModel.AspNetRoles" Width="1.5" PointX="3.75" PointY="2.5" />
+        <EntityTypeShape EntityType="JamesDbModel.AspNetUserClaims" Width="1.5" PointX="8.25" PointY="3.625" />
+        <EntityTypeShape EntityType="JamesDbModel.AspNetUserLogins" Width="1.5" PointX="8.25" PointY="1" />
+        <EntityTypeShape EntityType="JamesDbModel.AspNetUsers" Width="1.5" PointX="6" PointY="1.375" />
+        <EntityTypeShape EntityType="JamesDbModel.Frettir" Width="1.5" PointX="2.75" PointY="5.75" />
+        <EntityTypeShape EntityType="JamesDbModel.Saids" Width="1.5" PointX="4.75" PointY="5.75" />
+        <AssociationConnector Association="JamesDbModel.FK_dbo_AspNetUserClaims_dbo_AspNetUsers_UserId" />
+        <AssociationConnector Association="JamesDbModel.FK_dbo_AspNetUserLogins_dbo_AspNetUsers_UserId" />
+        <AssociationConnector Association="JamesDbModel.AspNetUserRoles" />
+        <EntityTypeShape EntityType="JamesDbModel.Said" Width="1.5" PointX="0.75" PointY="0.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>
